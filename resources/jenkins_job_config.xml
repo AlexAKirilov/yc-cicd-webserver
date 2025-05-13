@@ -1,0 +1,49 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Автосборка Docker контейнера по пушу</description>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@5.2.1">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>${GIT_REPO}</url>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/main</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+  </scm>
+  <triggers>
+    <com.cloudbees.jenkins.GitHubPushTrigger plugin="github">
+      <spec></spec>
+    </com.cloudbees.jenkins.GitHubPushTrigger>
+  </triggers>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>
+        # Вывод текущей директории сборки
+        echo "Current working directory: $(pwd)"
+        ls -la
+        cat package.json || echo "package.json not found"
+
+        # Сборка проекта Webpack
+        npm install
+        npm run build
+
+        # Сборка Docker образа Nginx с содержимым из dist
+        docker build -t my-nginx-site .
+
+        # Остановка и удаление старого контейнера, если он существует
+        docker stop nginx_site || true
+        docker rm nginx_site || true
+
+        # Запускаем новый контейнер с новым образом, делаем проброс порта 80
+        docker run -d -p 80:80 --name nginx_site my-nginx-site
+      </command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>
